@@ -1,4 +1,5 @@
 #include <iostream>
+#include <vector>
 using namespace std;
 #include "test_1.hpp"
 /*
@@ -13,6 +14,13 @@ using namespace std;
 
 int main()
 {
-    
+    Array<int> a1(5);
+    a1.add_data(1);
+    a1.add_data(2);
+    a1.add_data(3);
+    a1.add_data(4);
+    a1.add_data(5);
+    get_array(a1);
+    get_array_size(a1);
     return 0;
 }
