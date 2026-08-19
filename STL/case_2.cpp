@@ -29,7 +29,10 @@ class Person
             this->department = department;
             this->salary = salary;
         }
-
+        bool operator<(const Person& other) const
+        {
+            return this->id < other.id;
+        }
     public:
         string name;
         int id;
