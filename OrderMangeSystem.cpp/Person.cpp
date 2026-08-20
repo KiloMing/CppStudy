@@ -4,7 +4,14 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <fstream>
 /********PUBLIC***********/ // Global database containing all students, teachers, administrators, orders, and rooms
+
+namespace
+{
+    const std::string DATA_DIRECTORY =
+        "/Users/a1-6/Desktop/CPP_STUDY/OrderMangeSystem.cpp/Data/";
+}
 
 std::vector<Student> Database::g_students{};
 std::vector<Teacher> Database::g_teachers{};
@@ -17,9 +24,81 @@ void Database::initialize_database()
     // Initialize the database with some sample data
     g_administrators = Administrator("Admin", "admin123");
     set_password(g_administrators, "adminpass");
-    g_rooms.emplace_back(101, 3);
-    g_rooms.emplace_back(102, 5);
-    g_rooms.emplace_back(103, 2);
+    std::ifstream student_file(DATA_DIRECTORY + "student_account.txt");
+    if (student_file.is_open())
+    {
+        std::string name, id, password;
+        while (student_file >> name >> id >> password)
+        {
+            g_students.emplace_back(name, id);
+            set_password(g_students.back(), password);  
+        }
+    }
+    else
+    {
+        std::cerr << "Failed to open " << DATA_DIRECTORY
+                  << "student_account.txt for reading." << std::endl;
+    }
+    student_file.close();
+    std::ifstream teacher_file(DATA_DIRECTORY + "teacher_account.txt");
+    if (teacher_file.is_open())
+    {
+        std::string name, id, password;
+        while (teacher_file >> name >> id >> password)
+        {
+            g_teachers.emplace_back(name, id);
+            set_password(g_teachers.back(), password);
+        }
+    }
+    else
+    {
+        std::cerr << "Failed to open " << DATA_DIRECTORY
+                  << "teacher_account.txt for reading." << std::endl;
+    }
+    teacher_file.close();
+    std::ifstream room_file(DATA_DIRECTORY + "room.txt");
+    if (room_file.is_open())
+    {
+        int room_id, room_capacity, retired_capacity;
+        while (room_file >> room_id >> room_capacity >> retired_capacity)
+        {
+            g_rooms.emplace_back(room_id, room_capacity);
+            g_rooms.back().set_retired_capacity(retired_capacity);
+        }
+    }
+    else
+    {
+        std::cerr << "Failed to open " << DATA_DIRECTORY
+                  << "room.txt for reading." << std::endl;
+    }
+    room_file.close();
+    std::ifstream order_file(DATA_DIRECTORY + "order.txt");
+    if (order_file.is_open())
+    {
+        int order_room_id, order_number;
+        std::string student_name, status, weekday, time, student_id;        
+        while (order_file >> order_room_id >> student_name >> status >> weekday >> time >> order_number >> student_id)
+        {
+            g_orders.emplace_back(order_room_id, student_name, status, weekday, time, order_number, student_id);
+            
+            auto student_it = std::find_if(g_students.begin(), g_students.end(), [student_id](const Student& student) {
+                return student.id == student_id;
+            });
+            if (student_it != g_students.end())
+            {
+                student_it->my_orders.push_back(g_orders.back());
+                student_it->order_number++; // Increment the order number for the student   
+            }
+
+        }
+    }
+    else
+    {
+        std::cerr << "Failed to open " << DATA_DIRECTORY
+                  << "order.txt for reading." << std::endl;
+    }
+    order_file.close();
+
 }
 /*************PERSON*******************/
 
@@ -53,39 +132,56 @@ bool Person::password_compare(std::string input_password)
         return false;
     }
 }
+
+void Person::update_information(std::ostream& out)
+{
+    out << name << " " << id << " " << password << std::endl;
+}
+
 /*************STUDENT*******************/
 void Student::student_menu(void)
 {
     while (true)
     {
+        std::cout << std::endl;
         std::cout << "Student Menu:" << std::endl;
         std::cout << "1. Apply for an order" << std::endl;
         std::cout << "2. Show my orders" << std::endl;
         std::cout << "3. Show all orders" << std::endl;
         std::cout << "4. Cancel an order" << std::endl;
         std::cout << "0. Exit" << std::endl;
+        std::cout << std::endl;
         // Here you would typically implement the logic to handle the student's menu choices
         int st_choice;
         std::cout << "Enter your choice: ";
         std::cin >> st_choice;
+        std::cout << std::endl;
         switch (st_choice)
         {
             case 1:
                 apply_order();
+                std::cout << std::endl;
+
                 break;
             case 2:
                 show_my_order();
+                std::cout << std::endl;
                 break;  
             case 3:
                 show_all_order();
+                std::cout << std::endl;
                 break;
             case 4:
                 cancel_order();
+                std::cout << std::endl;
                 break;
             case 0:
+                std::cout << std::endl;
                 return;
+                
             default:
                 std::cout << "Invalid choice. Please try again." << std::endl;
+                std::cout << std::endl;
                 break;
         }
     }
@@ -102,6 +198,7 @@ void Student::apply_order(void)
     // Implementation for applying an order
     std::cout << "Enter the room ID you want to order: ";
     std::cin >> room_id;
+    std::cout << std::endl;
     auto room_it = std::find_if(Database::g_rooms.begin(), Database::g_rooms.end(), [room_id](const Room& room) {
         return room.room_id == room_id;
     });
@@ -125,7 +222,7 @@ void Student::apply_order(void)
     std::string time;
     std::cout << "Enter the time for the order (e.g., morning, afternoon): ";
     std::cin >> time;
-    
+    std::cout << std::endl;
     Order s_order(room_id, name, "auditing", day, time, this->order_number, id);
     my_orders.push_back(s_order);
     Database::g_orders.push_back(s_order);
@@ -207,11 +304,15 @@ void Student::show_all_order(void)
     }
     std::cout << std::endl;
 }
+
+
+
 /*************TEACHER*******************/
 void Teacher::teacher_menu(void)
 {
     while (true)
     {
+        std::cout << std::endl;
         std::cout << "Teacher Menu:" << std::endl;
         std::cout << "1. Show all orders" << std::endl;
         std::cout << "2. Audit an order" << std::endl;
@@ -221,18 +322,22 @@ void Teacher::teacher_menu(void)
         int te_choice;
         std::cout << "Enter your choice: "; 
         std::cin >> te_choice;
+        std::cout << std::endl;
         switch(te_choice)
         {
             case 1:
                 show_all_order();
+                std::cout << std::endl;
                 break;
             case 2:
                 audit_order();
+                std::cout << std::endl;
                 break;
             case 0:
                 return;
             default:
                 std::cout << "Invalid choice. Please try again." << std::endl;
+                std::cout << std::endl;
                 break;
         }
     }
@@ -250,7 +355,9 @@ void Teacher::show_all_order(void)
     for (auto &order : Database::g_orders)
     {
         std::cout << "Room ID: " << order.order_room_id 
-                  << ", Student Name: " << order.student_name 
+                  << ", Order Number: " << order.order_number
+                  << ", Student Name: " << order.student_name
+                  << ", Student ID: " << order.student_id
                   << ", Status: " << order.status 
                   << ", Day: " << order.weekday 
                   << ", Time: " << order.time << std::endl;
@@ -272,13 +379,15 @@ void Teacher::audit_order(void)
     int student_order_number;
     std::cout << "Enter the order number to audit: ";
     std::cin >> student_order_number;
+    std::cout << std::endl;
     bool found = false;
     for (auto &order : Database::g_orders)
     {
         if (order.student_id == student_id && order.order_number == student_order_number && order.status == "auditing")
         {
             found = true;
-            std::cout << "Order found: Room ID: " << order.order_room_id 
+            std::cout << "Order Number: " << order.order_number 
+                      << ", Order found: Room ID: " << order.order_room_id 
                       << ", Student Name: " << order.student_name 
                       << ", Status: " << order.status 
                       << ", Day: " << order.weekday 
@@ -286,6 +395,7 @@ void Teacher::audit_order(void)
             std::cout << "Enter new status (approved/rejected): ";
             std::string new_status;
             std::cin >> new_status;
+            std::cout << std::endl;
             auto it = std::find_if(Database::g_students.begin(), Database::g_students.end(), [student_id](const Student& student) {
                 return student.id == student_id;
             });
@@ -309,6 +419,7 @@ void Teacher::audit_order(void)
                     {
                         student_it->status = "approved";
                         std::cout << "Order approved successfully!" << std::endl;
+                        std::cout << std::endl;
                     }
                 }
                 else if(new_status == "rejected")
@@ -317,6 +428,7 @@ void Teacher::audit_order(void)
                     {
                         student_it->status = "rejected";
                         std::cout << "Order rejected successfully!" << std::endl;
+                        std::cout << std::endl;
                     }
                     if(room_it != Database::g_rooms.end())
                     {
@@ -327,6 +439,7 @@ void Teacher::audit_order(void)
             else
             {
                 std::cout << "Invalid status. No changes made." << std::endl;
+                std::cout << std::endl;
             }
             break;
         }
@@ -334,6 +447,7 @@ void Teacher::audit_order(void)
     if (!found)
     {
         std::cout << "Order not found." << std::endl;
+        std::cout << std::endl;
     }
 }
 
@@ -344,16 +458,21 @@ void Administrator::administrator_menu(Administrator& admin)
 {
     while(true)
     {
+
+        std::cout << std::endl;
+        std::cout << std::endl;
         std::cout << "Administrator Menu:" << std::endl;
         std::cout << "1. Add new account" << std::endl;
         std::cout << "2. Show accounts" << std::endl;
         std::cout << "3. Show rooms" << std::endl;
         std::cout << "4. Clear order file" << std::endl;
         std::cout << "0. Exit" << std::endl;
+        std::cout << std::endl;
         // Here you would typically implement the logic to handle the administrator's menu choices
         int ad_choice;
         std::cout << "Enter your choice: ";
         std::cin >> ad_choice;
+        std::cout << std::endl;
         switch (ad_choice)
         {
             case 1:
@@ -387,6 +506,7 @@ void Administrator::add_new_account(void)
     std::string role;
     bool account_created = false;
     std::cin >> role;
+    std::cout << std::endl;
     if(role == "student")
     {
         std::cout << "Enter the name of the new student account: ";
@@ -395,6 +515,7 @@ void Administrator::add_new_account(void)
         std::cin >> id;
         std::cout << "Enter the password for the new student account: ";
         std::cin >> password;
+        std::cout << std::endl;
         Database::g_students.emplace_back(name, id);
         set_password(Database::g_students.back(), password);
         std::cout << std::endl;
@@ -408,6 +529,7 @@ void Administrator::add_new_account(void)
         std::cin >> id;
         std::cout << "Enter the password for the new teacher account: ";
         std::cin >> password;
+        std::cout << std::endl;
         Database::g_teachers.emplace_back(name, id);
         set_password(Database::g_teachers.back(), password);
         std::cout << std::endl;
@@ -439,17 +561,6 @@ void Administrator::show_account(void)
 
 }
 
-// void Administrator::show_room(void)
-// {
-//     std::cout << "Rooms:" << std::endl;
-//     for (auto &room : rooms)
-//     {
-//         std::cout << "Room ID: " << room.room_id << ", Capacity: " 
-//         << room.room_capacity << ", Retired Capacity: " << room.retired_capacity << std::endl;
-//     }
-//     std::cout << std::endl;
-// }
-
 void Administrator::clear_order_file(void)
 {
     Database::g_orders.clear();
@@ -473,7 +584,7 @@ Room::Room(int room_id, int room_capacity)
 {
 }
 
-void Room::set_retired_capacity(int retired_capacity)
+void Room:: set_retired_capacity(int retired_capacity)
 {
     this->retired_capacity = retired_capacity;
 }
@@ -482,9 +593,10 @@ void Room::add_room(int room_id, int room_capacity)
 {
     Database::g_rooms.emplace_back(room_id, room_capacity);
     std::cout << "Room added successfully!" << std::endl;
+    std::cout << std::endl;
 }
 /********************/
-void show_room(void)
+void  show_room(void)
 {
     for(auto &room : Database::g_rooms)
     {
@@ -503,14 +615,16 @@ void sys_login(void)
     std::cin >> id;
     std::cout << "Enter your password: ";
     std::cin >> password;
-
+    std::cout << std::endl;
     // Check if the ID and password match any student account
     for (auto &student : Database::g_students)
     {
         if (student.id == id && student.password_compare(password))
         {
-            std::cout << "Login successful! Welcome, " << student.name << "." << std::endl;
+            std::cout << "Login successful! Welcome, " << student.name << "." << std::endl;\
+
             student.student_menu();
+            std::cout << std::endl;
             return;
         }
     }
@@ -522,6 +636,7 @@ void sys_login(void)
         {
             std::cout << "Login successful! Welcome, " << teacher.name << "." << std::endl;
             teacher.teacher_menu();
+            std::cout << std::endl;
             return;
         }
     }
@@ -531,8 +646,79 @@ void sys_login(void)
     {
         std::cout << "Login successful! Welcome, Administrator." << std::endl;
         Database::g_administrators.administrator_menu(Database::g_administrators);
+        std::cout << std::endl;
         return;
     }
 
     std::cout << "Invalid ID or password. Please try again." << std::endl;
+    std::cout << std::endl;
+}
+
+void data_update(void)
+{
+    // Update student accounts
+    std::ofstream student_file(DATA_DIRECTORY + "student_account.txt");
+    if (student_file.is_open())
+    {
+        for (auto &student : Database::g_students)
+        {
+            student.update_information(student_file);
+        }
+    }
+    else
+    {
+        std::cerr << "Failed to open " << DATA_DIRECTORY
+                  << "student_account.txt for writing." << std::endl;
+    }
+    student_file.close();
+
+    // Update teacher accounts
+    std::ofstream teacher_file(DATA_DIRECTORY + "teacher_account.txt");
+    if (teacher_file.is_open())
+    {
+        for (auto &teacher : Database::g_teachers)
+        {
+            teacher.update_information(teacher_file);
+        }
+    }
+    else
+    {
+        std::cerr << "Failed to open " << DATA_DIRECTORY
+                  << "teacher_account.txt for writing." << std::endl;
+    }
+    teacher_file.close();
+
+    // Update orders
+    std::ofstream order_file(DATA_DIRECTORY + "order.txt");
+    if (order_file.is_open())
+    {
+        for (const auto &order : Database::g_orders)
+        {
+            order_file << order.order_room_id << " " << order.student_name << " " 
+                       << order.status << " " << order.weekday << " "
+                       << order.time << " " << order.order_number 
+                       << " " << order.student_id << std::endl;
+        }
+    }
+    else
+    {
+        std::cerr << "Failed to open " << DATA_DIRECTORY
+                  << "order.txt for writing." << std::endl;
+    }
+    order_file.close();
+
+    std::ofstream room_file(DATA_DIRECTORY + "room.txt");
+    if (room_file.is_open())
+    {
+        for (const auto &room : Database::g_rooms)
+        {   
+            room_file << room.room_id << " " << room.room_capacity << " " << room.retired_capacity << std::endl;
+        }   
+    }
+    else
+    {
+        std::cerr << "Failed to open " << DATA_DIRECTORY
+                  << "room.txt for writing." << std::endl;
+    }
+    room_file.close();
 }

@@ -20,6 +20,7 @@ class Person
         friend void set_password(Person &p, std::string password);
         void get_information(void);
         bool password_compare(std::string input_password);
+        void update_information(std::ostream& out);
         ~Person() = default;
     public:
         std::string name;
@@ -114,3 +115,4 @@ class Database
 
 void show_room(void);
 void sys_login(void);
+void data_update(void);
